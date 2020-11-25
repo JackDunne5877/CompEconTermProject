@@ -16,11 +16,22 @@ class Voter:
 
 	#returns a numerical value for the likelihood of being influenced
 	#could potentially incorporate some machine learning concepts to formulate an optimal equation
-	def indiv_equation(self):
-		return #opinion*probab_change + educ + wtl
+	def influence_equation(self):
+		#returns a fractional (%) value that is associated with the influentiability of a particular person
+		#possibly incorporate machine learning here to determine values of the weights of each value, for now they are arbitrary values
+		return 0.05*self.educ + 0.1*self.wtl + 0.5*self.influence
 
 	def interaction(self, otherPerson):
-		return #value based on indiv_equation of person and otherPerson,
+		#calculate difference between people interacting, and change opinions based on who is more influential (based on influence eq)
+		influence_diff = self.influence_equation() - otherPerson.influence_equation()
+		if(influence_diff > 0):
+			otherPerson.opinion = otherPerson.opinion - influence_diff
+		else if(influence_diff < 0):
+			self.opinion = self.opinion - influence_diff
+		else:
+			return
+		#value based on influence_equation of person and otherPerson,
+		#add up both people's influence eq's, then add the subsequent remainder to 
 		#as well as influence, value will determine who was influenced and by how much
 		#interaction should be based on sir model from previous project - during each interaction, calculate each person's new values based on the weights of their current values
 		#consider introducing "Misinformation" as well (ie some numerical value that affects voter's overall equation values)
@@ -30,7 +41,7 @@ def society_generator(population):
 	for i in range(population):
 		people.append(Voter(np.random.normal(0.5, scale=0.18, size=1)), 
 							np.random.gamma(2, scale=2, size=1),
-							np.random.normal(0.5, scale=0.18, size=1),
+							np.random.normal(0.5, scale=0.18, size=1), #should be based on political stance, ie how radical their beliefs are - more rad = less wtl
 							np.random.randint(0, high=10, size=1),
 							np.random.gamma(2, scale=2, size=1)) #go over these to make sure they give the correct values that you want for your population
 
