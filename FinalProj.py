@@ -198,7 +198,7 @@ class Voter:
         x = max(min(20*2*random.random()*influencer.influence*(1-self.formed)*(1-max(self.educ-influencer.credibility, 0))-10, 10), -10)
             #represents how effective the influence was at changing the voter's opinion
         
-        if (np.abs(self.opinion-influencer.opinion <= self.wtl)):
+        if (np.abs(self.opinion - influencer.opinion) <= self.wtl):
             #if the influencer's opinion is within the voter's willing to listen radius, this changes the voter's opinion based on x
             self.opinion = influence_profile(x)
 #        if (np.abs(self.opinion-influencer.opinion)<=.05): 
@@ -258,6 +258,8 @@ class Voter:
                 ax.legend()
         self.formed = min(self.formed + .01*np.random.random(), 1)     
         
+
+
 def society_generator(population,  
                       opinion_msd = (.5, .175),
                       opinions = "normal", 
@@ -302,8 +304,7 @@ def society_generator(population,
     Returns: list; returns a list of voter objects with properties specified by the parameters
     
 
-    """
-    
+    """ 
     
     people = []
     for i in range(population):
@@ -311,13 +312,12 @@ def society_generator(population,
             opinionSpread = min(1, max(np.random.normal(opinion_msd[0], opinion_msd[1]), 0))
         if (opinions == "n-modal"): 
             mode = np.random.randint(0, opinionPeaks)
-            opinionSpread = min(1, max(np.random.normal(opinion_msd[0][mode], opinion_msd[1][mode]), 0))      
-        if (opinions == "bianary"): 
-            func = charEq(xrange = [0,1], switch = opinion.msd[0], sd = opinion_msd[1])
+            opinionSpread = min(1, max(np.random.normal(opinion_msd[0][mode], opinion_msd[1][mode], 0)))      
+        if (opinions == "binary"): 
+            func = charEq(xrange = [0,1], switch = opinion_msd[0], sd = opinion_msd[1])
             opinionSpread = func(np.random.random())
         if (opinions == "uniform"): 
             opinionSpread = np.random.random()    
-        opinion = opinionSpread
         if (educ_scale == "off"): 
             educ = .5
         else: 
@@ -338,7 +338,7 @@ def society_generator(population,
             influence = 1
         else: 
             influence = np.random.normal(.5, .2)
-        people.append(Voter(opinion, 
+        people.append(Voter(opinionSpread, 
                             educ,
                             wtl, #should be based on political stance, ie how radical their beliefs are - more rad = less wtl
                             formed,
@@ -365,7 +365,7 @@ class NewsSpace:
         """
         self.newsList.append(news)
         
-    def addNews(self, num_of_news = 1, opinion_msd = (.5, .2), influence_msd = (.5, .2), credibility_msd = (.5, .2), opinions = "spread"): 
+    def addNews(self, num_of_news, opinionPeaks, opinion_msd, influence_msd, credibility_msd, opinions): 
         """ 
         Adds multiple news articles to the news space according to the distribution specified in the patameters
         
@@ -382,17 +382,17 @@ class NewsSpace:
         Returns: nothing
         """
         for i in range(0, num_of_news): 
-            if (opinions == "spread"): 
+            if (opinions == "normal"): 
                 opinionSpread = min(1, max(np.random.normal(opinion_msd[0], opinion_msd[1]), 0))
             if (opinions == "n-modal"): 
                 mode = np.random.randint(0, opinionPeaks)
                 opinionSpread = min(1, max(np.random.normal(opinion_msd[0][mode], opinion_msd[1][mode]), 0))      
-            if (opinions == "bianary"): 
-                func = charEq(xrange = [0,1], switch = opinion.msd[0], sd = opinion_msd[1])
+            if (opinions == "binary"): 
+                func = charEq(xrange = [0,1], switch = opinion_msd[0], sd = opinion_msd[1])
                 opinionSpread = func(np.random.random())
             if (opinions == "uniform"): 
                 opinionSpread = np.random.random()    
-            opinion = opinionSpread
+                opinions = opinionSpread
             if (influence_msd =="off"): 
                 influence = 1 
             else: 
@@ -401,7 +401,7 @@ class NewsSpace:
                 credibility = 1 
             else: 
                 credibility = np.random.normal(credibility_msd[0], credibility_msd[1])
-            news = News(opinion, influence, credibility)
+            news = News(opinion=opinionSpread, influence=influence, credibility=credibility)
             self.newsList.append(news)
             
     def getNews(self): 
@@ -441,8 +441,17 @@ def experiment(society, num_periods, newsList = 0,  plot_each_round = "false", p
     opinionSpread0 = []
     for person in society: 
         opinionSpread0.append(person.opinion)
-    ax1.hist(opinionSpread0, bins =20)
+    ax1.hist(opinionSpread0, bins =40)
     ax1.set_title("Innitial Distribution of opinions: Mean = {}, Standard Deviation = {}".format(np.average(opinionSpread0),np.std(opinionSpread0)))
+    
+    #show news distribution
+    fig1A = plt.figure(figsize=(10,8))
+    ax1A = fig1A.add_subplot(1,1,1)
+    newsSpread0 = []
+    for news in newsList:
+        newsSpread0.append(news.opinion)
+    ax1A.hist(opinionSpread0, bins=40)
+    ax1A.set_title("Initial Distribution of news leanings: Mean = {}, Standard Deviation = {}".format(np.average(newsSpread0), np.std(newsSpread0)))
     
     #Exposes all people to all news in the news space
     if (newsMethod == "at start" and type(newsList) == list): 
@@ -456,10 +465,11 @@ def experiment(society, num_periods, newsList = 0,  plot_each_round = "false", p
         ax2 = fig2.add_subplot(1,1,1)
         opinionSpread01 = []
         for person in society: 
-            if (type(person.opinion)==np.ndarray): 
-                person.opinion = person.opinion[0] #fixes an issue where person.opinion sometimes returned a 1x1 array when we need an int here
+            if (type(person.opinion)==np.ndarray):
+                tmp = person.opinion[0]
+                person.opinion = tmp #fixes an issue where person.opinion sometimes returned a 1x1 array when we need an int here
             opinionSpread01.append(person.opinion)
-        ax2.hist(opinionSpread01, bins =20)
+        ax2.hist(opinionSpread01, bins =40)
         ax2.set_title("Innitial Distribution of opinions after news: Mean = {}, Standard Deviation = {}".format(np.average(opinionSpread01),np.std(opinionSpread01)))
                 
     #Allows people to interact with each other
@@ -484,12 +494,13 @@ def experiment(society, num_periods, newsList = 0,  plot_each_round = "false", p
             person.opinion = person.opinion[0]
         
         opinionSpread.append(person.opinion)
-    ax3.hist(opinionSpread, bins = 20)
+    ax3.hist(opinionSpread, bins = 40)
     ax3.set_title("Final Distribution of opinions: Mean = {}, Standard Deviation = {}".format(np.average(opinionSpread),np.std(opinionSpread)))  
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """Example of how to run an expiriment"""
 #creates a society
+"""
 pop = society_generator(100, 
                         opinion_msd = [[.9, .175], [.1, .1]], 
                         opinions = "n-modal", 
@@ -502,3 +513,82 @@ news = News(opinion = .1, influence = .1, credibility = 1) #creates a news artic
 newsSpace.add1News(news) #adds that news article to the news space
 newsSpace.addNews(num_of_news = 2, opinion_msd = (.5, .001), influence_msd = (1, .001), credibility_msd = (.5, .01)) #adds a bunch of news articles to the news space
 experiment(pop, 100, newsList = newsSpace.getNews())#runs the expiriment
+"""
+
+#Function to run an experiment
+def experimentGen(opinionDist, peaks, newsDist):
+    pop = society_generator(500, 
+                            opinion_msd=[[.9, .175], [.1, .1]], 
+                            opinions=opinionDist, 
+                            opinionPeaks=peaks, 
+                            educ_scale=.5, 
+                            wtl_msd = (.4, .2), 
+                            formed_scale = .1, 
+                            social_msd = (.5, .2), 
+                            influence_msd = (.5, .2))
+    newsSpace = NewsSpace() #creates a news space
+    news = News(opinion = .1, influence = .1, credibility = 1) #creates a news article
+    newsSpace.add1News(news) #adds that news article to the news space
+    newsSpace.addNews(num_of_news = 40, opinionPeaks= 2, opinion_msd = (.5, .001), influence_msd = (1, .001), credibility_msd = (.5, .01), opinions=newsDist) #adds a bunch of news articles to the news space
+    experiment(pop, 1000, newsList = newsSpace.getNews())
+    
+#experimentGen(opinionDist="normal", peaks=2, newsDist="binary")
+
+#interactive function to receive console inputs
+def userInteraction():
+    print("what distribution of opinions would you like for your society? (options are: n-modal, binary, uniform, normal)")
+    string = str(input())
+    
+    print("how many peaks would you like? (only relevant for n-modal distributions)")
+    numPeaks = int(input())
+    
+    print("what kind of news distribution would you like? (options are: n-modal, binary, uniform, normal)")
+    news = str(input())
+    
+    print("generating experiment...")
+    experimentGen(opinionDist=string, peaks=numPeaks, newsDist=news)
+    
+
+userInteraction()
+"""
+#example of normally distributed opinions with ubiased news
+pop2 = society_generator(500, 
+                        #opinion_msd = [[.9, .175], [.1, .1]],
+                        opinions = "normal", 
+                        opinionPeaks = 2, 
+                        educ_scale = .5, 
+                        wtl_msd = (.4, .2), 
+                        formed_scale = .1, social_msd = (.5, .2), influence_msd = (.5, .2)) 
+newsSpace = NewsSpace() #creates a news space
+news = News(opinion = .1, influence = .1, credibility = 1) #creates a news article
+newsSpace.add1News(news) #adds that news article to the news space
+newsSpace.addNews(num_of_news = 2, opinion_msd = (.5, .001), influence_msd = (1, .001), credibility_msd = (.5, .01)) #adds a bunch of news articles to the news space
+experiment(pop2, 1000, newsList = newsSpace.getNews())#runs the expiriment)
+
+pop3 = society_generator(500, 
+                        #opinion_msd = [[.9, .175], [.1, .1]],
+                        opinions = "normal", 
+                        opinionPeaks = 2, 
+                        educ_scale = .1, 
+                        wtl_msd = (.4, .2), 
+                        formed_scale = .1, social_msd = (.5, .2), influence_msd = (.5, .2)) 
+newsSpace = NewsSpace() #creates a news space
+news = News(opinion = .1, influence = .1, credibility = 1) #creates a news article
+newsSpace.add1News(news) #adds that news article to the news space
+newsSpace.addNews(num_of_news = 2, opinion_msd = (.5, .001), influence_msd = (1, .001), credibility_msd = (.5, .01)) #adds a bunch of news articles to the news space
+experiment(pop2, 1000, newsList = newsSpace.getNews())#runs the expiriment)
+
+#example of normally distributed opinions with biased, 2 partisan news sources
+pop4 = society_generator(500, 
+                        #opinion_msd = [[.9, .175], [.1, .1]],
+                        opinions = "normal", 
+                        opinionPeaks = 2, 
+                        educ_scale = .1, 
+                        wtl_msd = (.4, .2), 
+                        formed_scale = .1, social_msd = (.5, .2), influence_msd = (.5, .2)) 
+newsSpace = NewsSpace() #creates a news space
+news = News(opinion = .1, influence = .1, credibility = 1, opinions="binary") #creates a news article
+newsSpace.add1News(news) #adds that news article to the news space
+newsSpace.addNews(num_of_news = 2, opinion_msd = (.5, .001), influence_msd = (1, .001), credibility_msd = (.5, .01)) #adds a bunch of news articles to the news space
+experiment(pop4, 1000, newsList = newsSpace.getNews())#runs the expiriment)
+"""
