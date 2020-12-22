@@ -1,8 +1,5 @@
 # CompEconTermProject
 
-This codebase is a term project for a computational economics course. We built a model to simulate social media interactions to better uderstand the influence it has on our political landscape. Attached to this repository is a pdf of our findings.
-
-Abstract:
 Through our study, we examine and model how human interactions can cause such
 polarization in opinions and how this divide can be remedied. We examine factors that influence
 human opinion and apply the modern phenomenon of social media to this framework. Our
